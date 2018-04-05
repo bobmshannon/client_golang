@@ -118,6 +118,12 @@ func TestAPIs(t *testing.T) {
 		}
 	}
 
+	doSnapshot := func(skipHead bool) func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return queryAPI.Snapshot(context.Background(), skipHead)
+		}
+	}
+
 	queryTests := []apiTest{
 		{
 			do: doQuery("2", testTime),
@@ -222,6 +228,27 @@ func TestAPIs(t *testing.T) {
 				"start": []string{testTime.Add(-time.Minute).Format(time.RFC3339Nano)},
 				"end":   []string{testTime.Format(time.RFC3339Nano)},
 			},
+			err: fmt.Errorf("some error"),
+		},
+
+		{
+			do: doSnapshot(true),
+			inRes: &snapshotResult{
+				Name: "20171210T211224Z-2be650b6d019eb54",
+			},
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/snapshot",
+			reqParam: url.Values{
+				"skip_head": []string{"true"},
+			},
+			res: "20171210T211224Z-2be650b6d019eb54",
+		},
+
+		{
+			do: doSnapshot(true),
+			inErr:     fmt.Errorf("some error"),
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/snapshot",
 			err: fmt.Errorf("some error"),
 		},
 	}
