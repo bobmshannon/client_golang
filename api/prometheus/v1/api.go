@@ -304,9 +304,6 @@ func (h *httpAPI) DeleteSeries(ctx context.Context, matches []string, startTime 
 
 func (h *httpAPI) CleanTombstones(ctx context.Context) error {
 	u := h.client.URL(epCleanTombstones, nil)
-	q := u.Query()
-
-	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
