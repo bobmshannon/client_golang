@@ -285,7 +285,7 @@ func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotRes
 
 	var res SnapshotResult
 	err = json.Unmarshal(body, &res)
-	return res, nil
+	return res, err
 }
 
 func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
