@@ -88,7 +88,7 @@ type API interface {
 type AdminAPI interface {
 	// Snapshot creates a snapshot of all current data into snapshots/<datetime>-<rand>
 	// under the TSDB's data directory and returns the directory as response.
-	Snapshot(ctx context.Context, skipHead bool) (string, error)
+	Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error)
 	// DeleteSeries deletes data for a selection of series in a time range.
 	DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error
 	// CleanTombstones removes the deleted data from disk and cleans up the existing tombstones.
@@ -104,8 +104,8 @@ type queryResult struct {
 	v model.Value
 }
 
-// snapshotResult contains result data for a snapshot.
-type snapshotResult struct {
+// SnapshotResult contains result data for a snapshot.
+type SnapshotResult struct {
 	Name string
 }
 
@@ -265,7 +265,7 @@ func (h *httpAPI) Series(ctx context.Context, matches []string, startTime time.T
 	return mset, err
 }
 
-func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
+func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error) {
 	u := h.client.URL(epSnapshot, nil)
 	q := u.Query()
 
@@ -275,17 +275,17 @@ func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (string, err
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
-		return "", err
+		return SnapshotResult{}, err
 	}
 
 	_, body, err := h.client.Do(ctx, req)
 	if err != nil {
-		return "", err
+		return SnapshotResult{}, err
 	}
 
-	var res snapshotResult
+	var res SnapshotResult
 	err = json.Unmarshal(body, &res)
-	return res.Name, nil
+	return res, nil
 }
 
 func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {

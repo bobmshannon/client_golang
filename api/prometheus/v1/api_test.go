@@ -249,7 +249,7 @@ func TestAPIs(t *testing.T) {
 
 		{
 			do: doSnapshot(true),
-			inRes: &snapshotResult{
+			inRes: SnapshotResult{
 				Name: "20171210T211224Z-2be650b6d019eb54",
 			},
 			reqMethod: "POST",
@@ -257,7 +257,9 @@ func TestAPIs(t *testing.T) {
 			reqParam: url.Values{
 				"skip_head": []string{"true"},
 			},
-			res: "20171210T211224Z-2be650b6d019eb54",
+			res: SnapshotResult{
+				Name: "20171210T211224Z-2be650b6d019eb54",
+			},
 		},
 
 		{
