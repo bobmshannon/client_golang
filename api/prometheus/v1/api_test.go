@@ -249,8 +249,8 @@ func TestAPIs(t *testing.T) {
 
 		{
 			do: doSnapshot(true),
-			inRes: SnapshotResult{
-				Name: "20171210T211224Z-2be650b6d019eb54",
+			inRes: map[string]string{
+				"name": "20171210T211224Z-2be650b6d019eb54",
 			},
 			reqMethod: "POST",
 			reqPath:   "/api/v1/admin/tsdb/snapshot",
