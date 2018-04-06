@@ -39,6 +39,7 @@ const (
 	epQueryRange      = apiPrefix + "/query_range"
 	epLabelValues     = apiPrefix + "/label/:name/values"
 	epSeries          = apiPrefix + "/series"
+	epTargets         = apiPrefix + "/targets"
 	epSnapshot        = apiPrefix + "/admin/tsdb/snapshot"
 	epDeleteSeries    = apiPrefix + "/admin/tsdb/delete_series"
 	epCleanTombstones = apiPrefix + "/admin/tsdb/clean_tombstones"
@@ -56,6 +57,10 @@ const (
 	ErrCanceled              = "canceled"
 	ErrExec                  = "execution"
 	ErrBadResponse           = "bad_response"
+
+	HealthUp      = "up"
+	HealthUnknown = "unknown"
+	HealthDown    = "down"
 )
 
 // Error is an error returned by the API.
@@ -87,7 +92,7 @@ type API interface {
 	// Series finds series by label matchers.
 	Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error)
 	// Targets returns an overview of the current state of the Prometheus target discovery.
-	// Targets(ctx context.Context)
+	Targets(ctx context.Context) (TargetsResult, error)
 	// AlertManagers returns an overview of the current state of the Prometheus alertmanager discovery.
 	AlertManagers(ctx context.Context) (AlertManagersResult, error)
 }
@@ -127,15 +132,29 @@ type AlertManager struct {
 	URL string `json:"url"`
 }
 
-type SnapshotResult struct {
-	Name string `json:"name"`
-}
-
 type ConfigResult struct {
 	YAML string `json:"yaml"`
 }
 
 type FlagsResult map[string]string
+
+type SnapshotResult struct {
+	Name string `json:"name"`
+}
+
+type TargetsResult struct {
+	Active  []Target `json:"activeTargets"`
+	Dropped []Target `json:"droppedTargets"`
+}
+
+type Target struct {
+	DiscoveredLabels model.LabelSet `json:"discoveredLabels"`
+	Labels           model.LabelSet `json:"labels"`
+	ScrapeURL        string         `json:"scrapeUrl"`
+	LastError        string         `json:"lastError"`
+	LastScrape       time.Time      `json:"lastScrape"`
+	Health           string         `json:"health"`
+}
 
 func (qr *queryResult) UnmarshalJSON(b []byte) error {
 	v := struct {
@@ -339,6 +358,24 @@ func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotRes
 	}
 
 	var res SnapshotResult
+	err = json.Unmarshal(body, &res)
+	return res, err
+}
+
+func (h *httpAPI) Targets(ctx context.Context) (TargetsResult, error) {
+	u := h.client.URL(epTargets, nil)
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return TargetsResult{}, err
+	}
+
+	_, body, err := h.client.Do(ctx, req)
+	if err != nil {
+		return TargetsResult{}, err
+	}
+
+	var res TargetsResult
 	err = json.Unmarshal(body, &res)
 	return res, err
 }

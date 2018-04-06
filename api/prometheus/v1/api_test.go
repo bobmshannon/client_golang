@@ -138,6 +138,12 @@ func TestAPIs(t *testing.T) {
 		}
 	}
 
+	doTargets := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return queryAPI.Targets(context.Background())
+		}
+	}
+
 	doCleanTombstones := func() func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return nil, adminAPI.CleanTombstones(context.Background())
@@ -161,6 +167,12 @@ func TestAPIs(t *testing.T) {
 			return statusAPI.Flags(context.Background())
 		}
 	}
+
+	//testURLStr :=
+	/*testURL, err := url.Parse(testURLStr)
+	if err != nil {
+		t.Errorf("Unable to parse test URL.")
+	}*/
 
 	queryTests := []apiTest{
 		{
@@ -442,6 +454,80 @@ func TestAPIs(t *testing.T) {
 			do:        doAlertManagers(),
 			reqMethod: "GET",
 			reqPath:   "/api/v1/alertmanagers",
+			inErr:     fmt.Errorf("some error"),
+			err:       fmt.Errorf("some error"),
+		},
+
+		{
+			do:        doTargets(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/targets",
+			inRes: map[string]interface{}{
+				"activeTargets": []map[string]interface{}{
+					{
+						"discoveredLabels": map[string]string{
+							"__address__":      "127.0.0.1:9090",
+							"__metrics_path__": "/metrics",
+							"__scheme__":       "http",
+							"job":              "prometheus",
+						},
+						"labels": map[string]string{
+							"instance": "127.0.0.1:9090",
+							"job":      "prometheus",
+						},
+						"scrapeUrl":  "http://127.0.0.1:9090/metrics",
+						"lastError":  "",
+						"lastScrape": testTime.Format(time.RFC3339Nano),
+						"health":     "up",
+					},
+				},
+				"droppedTargets": []map[string]interface{}{
+					{
+						"discoveredLabels": map[string]string{
+							"__address__":      "127.0.0.1:9100",
+							"__metrics_path__": "/metrics",
+							"__scheme__":       "http",
+							"job":              "node",
+						},
+					},
+				},
+			},
+			res: TargetsResult{
+				Active: []Target{
+					{
+						DiscoveredLabels: model.LabelSet{
+							"__address__":      "127.0.0.1:9090",
+							"__metrics_path__": "/metrics",
+							"__scheme__":       "http",
+							"job":              "prometheus",
+						},
+						Labels: model.LabelSet{
+							"instance": "127.0.0.1:9090",
+							"job":      "prometheus",
+						},
+						ScrapeURL:  "http://127.0.0.1:9090/metrics",
+						LastError:  "",
+						LastScrape: testTime.Round(0),
+						Health:     "up",
+					},
+				},
+				Dropped: []Target{
+					{
+						DiscoveredLabels: model.LabelSet{
+							"__address__":      "127.0.0.1:9100",
+							"__metrics_path__": "/metrics",
+							"__scheme__":       "http",
+							"job":              "node",
+						},
+					},
+				},
+			},
+		},
+
+		{
+			do:        doTargets(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/targets",
 			inErr:     fmt.Errorf("some error"),
 			err:       fmt.Errorf("some error"),
 		},
