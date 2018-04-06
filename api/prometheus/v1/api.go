@@ -34,6 +34,7 @@ const (
 
 	apiPrefix = "/api/v1"
 
+	epAlertManagers   = apiPrefix + "/alertmanagers"
 	epQuery           = apiPrefix + "/query"
 	epQueryRange      = apiPrefix + "/query_range"
 	epLabelValues     = apiPrefix + "/label/:name/values"
@@ -88,7 +89,7 @@ type API interface {
 	// Targets returns an overview of the current state of the Prometheus target discovery.
 	// Targets(ctx context.Context)
 	// AlertManagers returns an overview of the current state of the Prometheus alertmanager discovery.
-	// AlertManagers(ctx context.Context)
+	AlertManagers(ctx context.Context) (AlertManagersResult, error)
 }
 
 type AdminAPI interface {
@@ -115,6 +116,15 @@ type queryResult struct {
 
 	// The decoded value.
 	v model.Value
+}
+
+type AlertManagersResult struct {
+	Active  []AlertManager `json:"activeAlertManagers"`
+	Dropped []AlertManager `json:"droppedAlertManagers"`
+}
+
+type AlertManager struct {
+	URL string `json:"url"`
 }
 
 type SnapshotResult struct {
@@ -187,6 +197,24 @@ func NewStatusAPI(c api.Client) StatusAPI {
 
 type httpStatusAPI struct {
 	client api.Client
+}
+
+func (h *httpAPI) AlertManagers(ctx context.Context) (AlertManagersResult, error) {
+	u := h.client.URL(epAlertManagers, nil)
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return AlertManagersResult{}, err
+	}
+
+	_, body, err := h.client.Do(ctx, req)
+	if err != nil {
+		return AlertManagersResult{}, err
+	}
+
+	var res AlertManagersResult
+	err = json.Unmarshal(body, &res)
+	return res, err
 }
 
 func (h *httpAPI) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {

@@ -102,6 +102,12 @@ func TestAPIs(t *testing.T) {
 		client: client,
 	}
 
+	doAlertManagers := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return queryAPI.AlertManagers(context.Background())
+		}
+	}
+
 	doQuery := func(q string, ts time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return queryAPI.Query(context.Background(), q, ts)
@@ -374,6 +380,68 @@ func TestAPIs(t *testing.T) {
 			do:        doFlags(),
 			reqMethod: "GET",
 			reqPath:   "/api/v1/status/flags",
+			inErr:     fmt.Errorf("some error"),
+			err:       fmt.Errorf("some error"),
+		},
+
+		{
+			do:        doAlertManagers(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/alertmanagers",
+			inRes: map[string]interface{}{
+				"activeAlertManagers": []map[string]string{
+					{
+						"url": "http://127.0.0.1:9090/api/v1/alerts",
+					},
+					{
+						"url": "http://127.0.0.1:9091/api/v1/alerts",
+					},
+					{
+						"url": "http://127.0.0.1:9092/api/v1/alerts",
+					},
+				},
+				"droppedAlertManagers": []map[string]string{
+					{
+						"url": "http://127.0.0.1:9093/api/v1/alerts",
+					},
+					{
+						"url": "http://127.0.0.1:9094/api/v1/alerts",
+					},
+					{
+						"url": "http://127.0.0.1:9095/api/v1/alerts",
+					},
+				},
+			},
+			res: AlertManagersResult{
+				Active: []AlertManager{
+					{
+						URL: "http://127.0.0.1:9090/api/v1/alerts",
+					},
+					{
+						URL: "http://127.0.0.1:9091/api/v1/alerts",
+					},
+					{
+						URL: "http://127.0.0.1:9092/api/v1/alerts",
+					},
+				},
+				Dropped: []AlertManager{
+					{
+						URL: "http://127.0.0.1:9093/api/v1/alerts",
+					},
+					{
+						URL: "http://127.0.0.1:9094/api/v1/alerts",
+					},
+					{
+						URL: "http://127.0.0.1:9095/api/v1/alerts",
+					},
+				},
+			},
+		},
+
+		{
+			do:        doAlertManagers(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/alertmanagers",
 			inErr:     fmt.Errorf("some error"),
 			err:       fmt.Errorf("some error"),
 		},
