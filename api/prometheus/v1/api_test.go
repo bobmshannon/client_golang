@@ -124,6 +124,18 @@ func TestAPIs(t *testing.T) {
 		}
 	}
 
+	doCleanTombstones := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return nil, queryAPI.CleanTombstones(context.Background())
+		}
+	}
+
+	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return nil, queryAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
+		}
+	}
+
 	queryTests := []apiTest{
 		{
 			do: doQuery("2", testTime),
@@ -245,10 +257,54 @@ func TestAPIs(t *testing.T) {
 		},
 
 		{
-			do: doSnapshot(true),
+			do:        doSnapshot(true),
 			inErr:     fmt.Errorf("some error"),
 			reqMethod: "POST",
 			reqPath:   "/api/v1/admin/tsdb/snapshot",
+			err:       fmt.Errorf("some error"),
+		},
+
+		{
+			do:        doCleanTombstones(),
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/clean_tombstones",
+		},
+
+		{
+			do:        doCleanTombstones(),
+			inErr:     fmt.Errorf("some error"),
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/clean_tombstones",
+			err:       fmt.Errorf("some error"),
+		},
+
+		{
+			do: doDeleteSeries("up", testTime.Add(-time.Minute), testTime),
+			inRes: []map[string]string{
+				{
+					"__name__": "up",
+					"job":      "prometheus",
+					"instance": "localhost:9090"},
+			},
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/delete_series",
+			reqParam: url.Values{
+				"match": []string{"up"},
+				"start": []string{testTime.Add(-time.Minute).Format(time.RFC3339Nano)},
+				"end":   []string{testTime.Format(time.RFC3339Nano)},
+			},
+		},
+
+		{
+			do:        doDeleteSeries("up", testTime.Add(-time.Minute), testTime),
+			inErr:     fmt.Errorf("some error"),
+			reqMethod: "POST",
+			reqPath:   "/api/v1/admin/tsdb/delete_series",
+			reqParam: url.Values{
+				"match": []string{"up"},
+				"start": []string{testTime.Add(-time.Minute).Format(time.RFC3339Nano)},
+				"end":   []string{testTime.Format(time.RFC3339Nano)},
+			},
 			err: fmt.Errorf("some error"),
 		},
 	}

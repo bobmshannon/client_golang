@@ -277,7 +277,28 @@ func (h *httpAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
 }
 
 func (h *httpAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
-	//TODO
+	u := h.client.URL(epDeleteSeries, nil)
+	q := u.Query()
+
+	for _, m := range matches {
+		q.Add("match[]", m)
+	}
+
+	q.Set("start", startTime.Format(time.RFC3339Nano))
+	q.Set("end", endTime.Format(time.RFC3339Nano))
+
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = h.client.Do(ctx, req)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
