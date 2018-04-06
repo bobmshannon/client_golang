@@ -41,6 +41,8 @@ const (
 	epSnapshot        = apiPrefix + "/admin/tsdb/snapshot"
 	epDeleteSeries    = apiPrefix + "/admin/tsdb/delete_series"
 	epCleanTombstones = apiPrefix + "/admin/tsdb/clean_tombstones"
+	epConfig          = apiPrefix + "/status/config"
+	epFlags           = apiPrefix + "/status/flags"
 )
 
 // ErrorType models the different API error types.
@@ -83,16 +85,27 @@ type API interface {
 	LabelValues(ctx context.Context, label string) (model.LabelValues, error)
 	// Series finds series by label matchers.
 	Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error)
+	// Targets returns an overview of the current state of the Prometheus target discovery.
+	// Targets(ctx context.Context)
+	// AlertManagers returns an overview of the current state of the Prometheus alertmanager discovery.
+	// AlertManagers(ctx context.Context)
 }
 
 type AdminAPI interface {
 	// Snapshot creates a snapshot of all current data into snapshots/<datetime>-<rand>
 	// under the TSDB's data directory and returns the directory as response.
-	Snapshot(ctx context.Context, skipHead bool) (string, error)
+	Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error)
 	// DeleteSeries deletes data for a selection of series in a time range.
 	DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error
 	// CleanTombstones removes the deleted data from disk and cleans up the existing tombstones.
 	CleanTombstones(ctx context.Context) error
+}
+
+type StatusAPI interface {
+	// Config returns the current Prometheus configuration.
+	Config(ctx context.Context) (ConfigResult, error)
+	// Flags returns the flag values that Prometheus was launched with.
+	Flags(ctx context.Context) (FlagsResult, error)
 }
 
 // queryResult contains result data for a query.
@@ -104,10 +117,15 @@ type queryResult struct {
 	v model.Value
 }
 
-// snapshotResult contains result data for a snapshot.
-type snapshotResult struct {
-	Name string
+type SnapshotResult struct {
+	Name string `json:"name"`
 }
+
+type ConfigResult struct {
+	YAML string `json:"yaml"`
+}
+
+type FlagsResult map[string]string
 
 func (qr *queryResult) UnmarshalJSON(b []byte) error {
 	v := struct {
@@ -159,6 +177,15 @@ func NewAdminAPI(c api.Client) AdminAPI {
 }
 
 type httpAdminAPI struct {
+	client api.Client
+}
+
+// NewStatusAPI returns a new Status API for the client.
+func NewStatusAPI(c api.Client) StatusAPI {
+	return &httpStatusAPI{client: apiClient{c}}
+}
+
+type httpStatusAPI struct {
 	client api.Client
 }
 
@@ -265,7 +292,7 @@ func (h *httpAPI) Series(ctx context.Context, matches []string, startTime time.T
 	return mset, err
 }
 
-func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
+func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error) {
 	u := h.client.URL(epSnapshot, nil)
 	q := u.Query()
 
@@ -275,17 +302,17 @@ func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (string, err
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
-		return "", err
+		return SnapshotResult{}, err
 	}
 
 	_, body, err := h.client.Do(ctx, req)
 	if err != nil {
-		return "", err
+		return SnapshotResult{}, err
 	}
 
-	var res snapshotResult
+	var res SnapshotResult
 	err = json.Unmarshal(body, &res)
-	return res.Name, nil
+	return res, err
 }
 
 func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
@@ -327,6 +354,42 @@ func (h *httpAdminAPI) CleanTombstones(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (h *httpStatusAPI) Config(ctx context.Context) (ConfigResult, error) {
+	u := h.client.URL(epConfig, nil)
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return ConfigResult{}, err
+	}
+
+	_, body, err := h.client.Do(ctx, req)
+	if err != nil {
+		return ConfigResult{}, err
+	}
+
+	var res ConfigResult
+	err = json.Unmarshal(body, &res)
+	return res, err
+}
+
+func (h *httpStatusAPI) Flags(ctx context.Context) (FlagsResult, error) {
+	u := h.client.URL(epFlags, nil)
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return FlagsResult{}, err
+	}
+
+	_, body, err := h.client.Do(ctx, req)
+	if err != nil {
+		return FlagsResult{}, err
+	}
+
+	var res FlagsResult
+	err = json.Unmarshal(body, &res)
+	return res, err
 }
 
 // apiClient wraps a regular client and processes successful API responses.

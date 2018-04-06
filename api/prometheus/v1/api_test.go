@@ -98,6 +98,10 @@ func TestAPIs(t *testing.T) {
 		client: client,
 	}
 
+	statusAPI := &httpStatusAPI{
+		client: client,
+	}
+
 	doQuery := func(q string, ts time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return queryAPI.Query(context.Background(), q, ts)
@@ -137,6 +141,18 @@ func TestAPIs(t *testing.T) {
 	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return nil, adminAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
+		}
+	}
+
+	doConfig := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return statusAPI.Config(context.Background())
+		}
+	}
+
+	doFlags := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return statusAPI.Flags(context.Background())
 		}
 	}
 
@@ -249,15 +265,17 @@ func TestAPIs(t *testing.T) {
 
 		{
 			do: doSnapshot(true),
-			inRes: &snapshotResult{
-				Name: "20171210T211224Z-2be650b6d019eb54",
+			inRes: map[string]string{
+				"name": "20171210T211224Z-2be650b6d019eb54",
 			},
 			reqMethod: "POST",
 			reqPath:   "/api/v1/admin/tsdb/snapshot",
 			reqParam: url.Values{
 				"skip_head": []string{"true"},
 			},
-			res: "20171210T211224Z-2be650b6d019eb54",
+			res: SnapshotResult{
+				Name: "20171210T211224Z-2be650b6d019eb54",
+			},
 		},
 
 		{
@@ -310,6 +328,54 @@ func TestAPIs(t *testing.T) {
 				"end":   []string{testTime.Format(time.RFC3339Nano)},
 			},
 			err: fmt.Errorf("some error"),
+		},
+
+		{
+			do:        doConfig(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/status/config",
+			inRes: map[string]string{
+				"yaml": "<content of the loaded config file in YAML>",
+			},
+			res: ConfigResult{
+				YAML: "<content of the loaded config file in YAML>",
+			},
+		},
+
+		{
+			do:        doConfig(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/status/config",
+			inErr:     fmt.Errorf("some error"),
+			err:       fmt.Errorf("some error"),
+		},
+
+		{
+			do:        doFlags(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/status/flags",
+			inRes: map[string]string{
+				"alertmanager.notification-queue-capacity": "10000",
+				"alertmanager.timeout":                     "10s",
+				"log.level":                                "info",
+				"query.lookback-delta":                     "5m",
+				"query.max-concurrency":                    "20",
+			},
+			res: FlagsResult{
+				"alertmanager.notification-queue-capacity": "10000",
+				"alertmanager.timeout":                     "10s",
+				"log.level":                                "info",
+				"query.lookback-delta":                     "5m",
+				"query.max-concurrency":                    "20",
+			},
+		},
+
+		{
+			do:        doFlags(),
+			reqMethod: "GET",
+			reqPath:   "/api/v1/status/flags",
+			inErr:     fmt.Errorf("some error"),
+			err:       fmt.Errorf("some error"),
 		},
 	}
 
