@@ -83,6 +83,9 @@ type API interface {
 	LabelValues(ctx context.Context, label string) (model.LabelValues, error)
 	// Series finds series by label matchers.
 	Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error)
+}
+
+type AdminAPI interface {
 	// Snapshot creates a snapshot of all current data into snapshots/<datetime>-<rand>
 	// under the TSDB's data directory and returns the directory as response.
 	Snapshot(ctx context.Context, skipHead bool) (string, error)
@@ -147,6 +150,15 @@ func NewAPI(c api.Client) API {
 }
 
 type httpAPI struct {
+	client api.Client
+}
+
+// NewAdminAPI returns a new Admin API for the client.
+func NewAdminAPI(c api.Client) AdminAPI {
+	return &httpAdminAPI{client: apiClient{c}}
+}
+
+type httpAdminAPI struct {
 	client api.Client
 }
 
@@ -253,7 +265,7 @@ func (h *httpAPI) Series(ctx context.Context, matches []string, startTime time.T
 	return mset, err
 }
 
-func (h *httpAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
+func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
 	u := h.client.URL(epSnapshot, nil)
 	q := u.Query()
 
@@ -276,7 +288,7 @@ func (h *httpAPI) Snapshot(ctx context.Context, skipHead bool) (string, error) {
 	return res.Name, nil
 }
 
-func (h *httpAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
+func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
 	u := h.client.URL(epDeleteSeries, nil)
 	q := u.Query()
 
@@ -302,7 +314,7 @@ func (h *httpAPI) DeleteSeries(ctx context.Context, matches []string, startTime 
 	return nil
 }
 
-func (h *httpAPI) CleanTombstones(ctx context.Context) error {
+func (h *httpAdminAPI) CleanTombstones(ctx context.Context) error {
 	u := h.client.URL(epCleanTombstones, nil)
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)

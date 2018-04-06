@@ -94,6 +94,10 @@ func TestAPIs(t *testing.T) {
 		client: client,
 	}
 
+	adminAPI := &httpAdminAPI{
+		client: client,
+	}
+
 	doQuery := func(q string, ts time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return queryAPI.Query(context.Background(), q, ts)
@@ -120,19 +124,19 @@ func TestAPIs(t *testing.T) {
 
 	doSnapshot := func(skipHead bool) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return queryAPI.Snapshot(context.Background(), skipHead)
+			return adminAPI.Snapshot(context.Background(), skipHead)
 		}
 	}
 
 	doCleanTombstones := func() func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return nil, queryAPI.CleanTombstones(context.Background())
+			return nil, adminAPI.CleanTombstones(context.Background())
 		}
 	}
 
 	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return nil, queryAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
+			return nil, adminAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
 		}
 	}
 
