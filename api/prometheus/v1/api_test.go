@@ -100,6 +100,36 @@ func TestAPIs(t *testing.T) {
 		}
 	}
 
+	doCleanTombstones := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return nil, promAPI.CleanTombstones(context.Background())
+		}
+	}
+
+	doConfig := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return promAPI.Config(context.Background())
+		}
+	}
+
+	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return nil, promAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
+		}
+	}
+
+	doFlags := func() func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return promAPI.Flags(context.Background())
+		}
+	}
+
+	doLabelValues := func(label string) func() (interface{}, error) {
+		return func() (interface{}, error) {
+			return promAPI.LabelValues(context.Background(), label)
+		}
+	}
+
 	doQuery := func(q string, ts time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return promAPI.Query(context.Background(), q, ts)
@@ -109,12 +139,6 @@ func TestAPIs(t *testing.T) {
 	doQueryRange := func(q string, rng Range) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			return promAPI.QueryRange(context.Background(), q, rng)
-		}
-	}
-
-	doLabelValues := func(label string) func() (interface{}, error) {
-		return func() (interface{}, error) {
-			return promAPI.LabelValues(context.Background(), label)
 		}
 	}
 
@@ -135,36 +159,6 @@ func TestAPIs(t *testing.T) {
 			return promAPI.Targets(context.Background())
 		}
 	}
-
-	doCleanTombstones := func() func() (interface{}, error) {
-		return func() (interface{}, error) {
-			return nil, promAPI.CleanTombstones(context.Background())
-		}
-	}
-
-	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
-		return func() (interface{}, error) {
-			return nil, promAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
-		}
-	}
-
-	doConfig := func() func() (interface{}, error) {
-		return func() (interface{}, error) {
-			return promAPI.Config(context.Background())
-		}
-	}
-
-	doFlags := func() func() (interface{}, error) {
-		return func() (interface{}, error) {
-			return promAPI.Flags(context.Background())
-		}
-	}
-
-	//testURLStr :=
-	/*testURL, err := url.Parse(testURLStr)
-	if err != nil {
-		t.Errorf("Unable to parse test URL.")
-	}*/
 
 	queryTests := []apiTest{
 		{
