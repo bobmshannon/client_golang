@@ -91,13 +91,6 @@ type API interface {
 	LabelValues(ctx context.Context, label string) (model.LabelValues, error)
 	// Series finds series by label matchers.
 	Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error)
-	// Targets returns an overview of the current state of the Prometheus target discovery.
-	Targets(ctx context.Context) (TargetsResult, error)
-	// AlertManagers returns an overview of the current state of the Prometheus alertmanager discovery.
-	AlertManagers(ctx context.Context) (AlertManagersResult, error)
-}
-
-type AdminAPI interface {
 	// Snapshot creates a snapshot of all current data into snapshots/<datetime>-<rand>
 	// under the TSDB's data directory and returns the directory as response.
 	Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error)
@@ -105,9 +98,6 @@ type AdminAPI interface {
 	DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error
 	// CleanTombstones removes the deleted data from disk and cleans up the existing tombstones.
 	CleanTombstones(ctx context.Context) error
-}
-
-type StatusAPI interface {
 	// Config returns the current Prometheus configuration.
 	Config(ctx context.Context) (ConfigResult, error)
 	// Flags returns the flag values that Prometheus was launched with.
@@ -123,6 +113,7 @@ type queryResult struct {
 	v model.Value
 }
 
+// AlertManagersResult contains the result from querying the alertmanagers endpoint.
 type AlertManagersResult struct {
 	Active  []AlertManager `json:"activeAlertManagers"`
 	Dropped []AlertManager `json:"droppedAlertManagers"`
@@ -132,16 +123,20 @@ type AlertManager struct {
 	URL string `json:"url"`
 }
 
+// ConfigResult contains the result from querying the config endpoint.
 type ConfigResult struct {
 	YAML string `json:"yaml"`
 }
 
+// FlagsResult contains the result from querying the flag endpoint.
 type FlagsResult map[string]string
 
+// SnapshotResult contains the result from querying the snapshot endpoint.
 type SnapshotResult struct {
 	Name string `json:"name"`
 }
 
+// TargetsResult contains the result from querying the targets endpoint.
 type TargetsResult struct {
 	Active  []Target `json:"activeTargets"`
 	Dropped []Target `json:"droppedTargets"`
@@ -197,24 +192,6 @@ func NewAPI(c api.Client) API {
 }
 
 type httpAPI struct {
-	client api.Client
-}
-
-// NewAdminAPI returns a new Admin API for the client.
-func NewAdminAPI(c api.Client) AdminAPI {
-	return &httpAdminAPI{client: apiClient{c}}
-}
-
-type httpAdminAPI struct {
-	client api.Client
-}
-
-// NewStatusAPI returns a new Status API for the client.
-func NewStatusAPI(c api.Client) StatusAPI {
-	return &httpStatusAPI{client: apiClient{c}}
-}
-
-type httpStatusAPI struct {
 	client api.Client
 }
 
@@ -339,7 +316,7 @@ func (h *httpAPI) Series(ctx context.Context, matches []string, startTime time.T
 	return mset, err
 }
 
-func (h *httpAdminAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error) {
+func (h *httpAPI) Snapshot(ctx context.Context, skipHead bool) (SnapshotResult, error) {
 	u := h.client.URL(epSnapshot, nil)
 	q := u.Query()
 
@@ -380,7 +357,7 @@ func (h *httpAPI) Targets(ctx context.Context) (TargetsResult, error) {
 	return res, err
 }
 
-func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
+func (h *httpAPI) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
 	u := h.client.URL(epDeleteSeries, nil)
 	q := u.Query()
 
@@ -406,7 +383,7 @@ func (h *httpAdminAPI) DeleteSeries(ctx context.Context, matches []string, start
 	return nil
 }
 
-func (h *httpAdminAPI) CleanTombstones(ctx context.Context) error {
+func (h *httpAPI) CleanTombstones(ctx context.Context) error {
 	u := h.client.URL(epCleanTombstones, nil)
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
@@ -421,7 +398,7 @@ func (h *httpAdminAPI) CleanTombstones(ctx context.Context) error {
 	return nil
 }
 
-func (h *httpStatusAPI) Config(ctx context.Context) (ConfigResult, error) {
+func (h *httpAPI) Config(ctx context.Context) (ConfigResult, error) {
 	u := h.client.URL(epConfig, nil)
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
@@ -439,7 +416,7 @@ func (h *httpStatusAPI) Config(ctx context.Context) (ConfigResult, error) {
 	return res, err
 }
 
-func (h *httpStatusAPI) Flags(ctx context.Context) (FlagsResult, error) {
+func (h *httpAPI) Flags(ctx context.Context) (FlagsResult, error) {
 	u := h.client.URL(epFlags, nil)
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
