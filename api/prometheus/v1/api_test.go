@@ -90,53 +90,49 @@ func TestAPIs(t *testing.T) {
 
 	client := &apiTestClient{T: t}
 
-	queryAPI := &httpAPI{
-		client: client,
-	}
-
-	adminAPI := &httpAdminAPI{
+	promAPI := &httpAPI{
 		client: client,
 	}
 
 	doQuery := func(q string, ts time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return queryAPI.Query(context.Background(), q, ts)
+			return promAPI.Query(context.Background(), q, ts)
 		}
 	}
 
 	doQueryRange := func(q string, rng Range) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return queryAPI.QueryRange(context.Background(), q, rng)
+			return promAPI.QueryRange(context.Background(), q, rng)
 		}
 	}
 
 	doLabelValues := func(label string) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return queryAPI.LabelValues(context.Background(), label)
+			return promAPI.LabelValues(context.Background(), label)
 		}
 	}
 
 	doSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return queryAPI.Series(context.Background(), []string{matcher}, startTime, endTime)
+			return promAPI.Series(context.Background(), []string{matcher}, startTime, endTime)
 		}
 	}
 
 	doSnapshot := func(skipHead bool) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return adminAPI.Snapshot(context.Background(), skipHead)
+			return promAPI.Snapshot(context.Background(), skipHead)
 		}
 	}
 
 	doCleanTombstones := func() func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return nil, adminAPI.CleanTombstones(context.Background())
+			return nil, promAPI.CleanTombstones(context.Background())
 		}
 	}
 
 	doDeleteSeries := func(matcher string, startTime time.Time, endTime time.Time) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			return nil, adminAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
+			return nil, promAPI.DeleteSeries(context.Background(), []string{matcher}, startTime, endTime)
 		}
 	}
 
